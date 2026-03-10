@@ -1,15 +1,24 @@
+/*
+  ==============================================================================
+
+    This file contains the basic framework code for a JUCE plugin editor.
+
+  ==============================================================================
+*/
+
 #pragma once
 
+#include <JuceHeader.h>
 #include "PluginProcessor.h"
-#include "BinaryData.h"
-#include "melatonin_inspector/melatonin_inspector.h"
 
 //==============================================================================
-class PluginEditor : public juce::AudioProcessorEditor
+/**
+*/
+class OpenBendAudioProcessorEditor  : public juce::AudioProcessorEditor
 {
 public:
-    explicit PluginEditor (PluginProcessor&);
-    ~PluginEditor() override;
+    OpenBendAudioProcessorEditor (OpenBendAudioProcessor&);
+    ~OpenBendAudioProcessorEditor() override;
 
     //==============================================================================
     void paint (juce::Graphics&) override;
@@ -18,8 +27,21 @@ public:
 private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
-    PluginProcessor& processorRef;
-    std::unique_ptr<melatonin::Inspector> inspector;
-    juce::TextButton inspectButton { "Inspect the UI" };
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginEditor)
+    OpenBendAudioProcessor& audioProcessor;
+
+    // Setting up the layout graphically
+
+    juce::ToggleButton portamentoToggle{ "Portamento Active " };
+    juce::Slider glideSpeedSlider;
+    juce::ComboBox curveTypeComboBox;
+
+    using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
+    using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
+    using ComboBoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
+
+    std::unique_ptr<ButtonAttachment> portamentoAttachment;
+    std::unique_ptr<SliderAttachment> glideSpeedAttachment;
+    std::unique_ptr<ComboBoxAttachment> curveAttachment;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OpenBendAudioProcessorEditor)
 };

@@ -1,55 +1,62 @@
-![PAMPLEJUCE](assets/images/pamplejuce.png)
-[![](https://github.com/sudara/pamplejuce/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/sudara/pamplejuce/actions)
+# OpenBend
 
-Pamplejuce is a ~~template~~ lifestyle for creating and building JUCE plugins in 2026.
+OpenBend is an open-source, MPE-based MIDI effect plugin designed to convert standard 12-Tone Equal Temperament (12-TET) MIDI data into pure **Just Intonation** on the fly. Built with the JUCE framework, it functions as a MIDI insert effect that intercepts incoming MIDI notes, analyzes the harmony to find the root, and applies per-note pitch bends to retune chords to Just Intonation ratios.
 
-Out-of-the-box, it:
+## Features
+- **Dynamic Just Intonation**: Automatically finds the root note of the current chord and retunes all notes to ideal harmonic ratios (e.g., a Perfect 5th is exactly 3:2, a Major 3rd is 5:4).
+- **MPE Support**: Utilizes MIDI Polyphonic Expression (MPE) to apply independent pitch bends to each note.
+- **Portamento / Glide**: Smoothly glides the pitch between moving chords and intervals with adjustable speed/time (1ms to 2000ms).
+- **Customizable Glide Curves**: Choose between Linear, Logarithmic, and Exponential glide curves for different portamento effects.
 
-1. Runs C++23
-2. Uses JUCE 8.x as a git submodule (tracking develop).
-3. Uses CPM for dependency management.
-3. Relies on CMake 3.25 and higher for cross-platform building.
-4. Has [Catch2](https://github.com/catchorg/Catch2) v3.7.1 for the test framework and runner.
-5. Includes a `Tests` target and a `Benchmarks` target with examples to get started quickly.
-6. Has [Melatonin Inspector](https://github.com/sudara/melatonin_inspector) installed as a JUCE module to help relieve headaches when building plugin UI.
+## How It Works & How It Is Used
 
-It also has integration with GitHub Actions, specifically:
+### How It Works
+OpenBend intercepts standard MIDI input and assigns each note to its own MPE channel (Channels 2-15). It then monitors the active notes to determine the lowest note (the root) of the current chord. For every other note played, the plugin calculates the exact deviation required to reach the Just Intonation frequency relative to that root. It then sends an MPE pitch bend message to the target note's specific channel.
 
-1. Building and testing cross-platform (linux, macOS, Windows) binaries
-2. Running tests and benchmarks in CI
-3. Running [pluginval](http://github.com/tracktion/pluginval) 1.x against the binaries for plugin validation
-4. Config for [installing Intel IPP](https://www.intel.com/content/www/us/en/developer/tools/oneapi/ipp.html)
-5. [Code signing and notarization on macOS](https://melatonin.dev/blog/how-to-code-sign-and-notarize-macos-audio-plugins-in-ci/)
-6. [Windows code signing via Azure Trusted Signing](https://melatonin.dev/blog/code-signing-on-windows-with-azure-trusted-signing/)
+*Note: OpenBend assumes that the receiving synthesizer is configured for MPE and has its pitch bend range set to **±48 semitones***.
 
-It also contains:
+### How To Use It
+1. **Insert the Plugin**: Load OpenBend onto a MIDI track in your DAW before your chosen synthesizer instrument.
+2. **Configure Your Synth**: Ensure the synthesizer receiving MIDI from OpenBend is MPE-compatible and that its pitch bend range is set to **±48 semitones**.
+3. **Play Chords**: Play standard 12-TET chords on your MIDI controller. OpenBend will do the rest for you, returning Just Intonation MIDI data to your synthesizer.
+4. **Tweak Glide**: Use the UI to enable/disable portamento, adjust the glide speed in milliseconds, and pick the curve type (Linear/Logarithmic/Exponential) that suits your style.
 
-1. A `.gitignore` for all platforms.
-2. A `.clang-format` file for keeping code tidy.
-3. A `VERSION` file that will propagate through JUCE and your app.
-4. A ton of useful comments and options around the CMake config.
+## Installation & Build Instructions
 
-## How does this all work at a high level?
+You do not need to write or compile any code to use OpenBend. Pre-compiled binaries are automatically generated for both Windows and Mac!
 
-Check out the [official Pamplejuce documentation](https://melatonin.dev/manuals/pamplejuce/how-does-this-all-work/).
+### 1. Download the Plugin
+* Go to the **[Releases](../../releases)** page (look for the "Releases" section on the right side of the GitHub homepage).
+* Under the latest version (e.g., `v1.0.0`), download the `.zip` file for your operating system.
 
-[![Arc - 2024-10-01 51@2x](https://github.com/user-attachments/assets/01d19d2d-fbac-481f-8cec-e9325b2abe57)](https://melatonin.dev/manuals/pamplejuce/how-does-this-all-work/)
+### 2. Windows Setup
+1. Extract the downloaded `.zip` file.
+2. Drag and drop the `OpenBend.vst3` file into your system's VST3 folder:
+   `C:\Program Files\Common Files\VST3`
 
-## Setting up for YOUR project
+### 3. macOS Setup
+1. Extract the downloaded `.zip` file.
+2. For Logic Pro / GarageBand, move `OpenBend.component` to your Audio Units folder:
+   `/Library/Audio/Plug-Ins/Components`
+3. For Ableton / Bitwig / Studio One, move `OpenBend.vst3` to your VST3 folder:
+   `/Library/Audio/Plug-Ins/VST3`
 
-This is a template repo!
+*(Mac Troubleshooting: Since this is an indie open-source plugin, Apple's Gatekeeper might flag it. If your DAW refuses to load it, open your Mac's **System Settings > Privacy & Security**, scroll down, and click "Allow Anyway" for OpenBend.)*
 
-That means you can click "[Use this template](https://github.com/sudara/pamplejuce/generate)" here or at the top of the page to get your own copy (not fork) of the repo. Then you can make it private or keep it public, up to you.
+### 4. Load it in your DAW
+* Restart your DAW or force a plugin rescan.
+* OpenBend will show up in your **MIDI Effects** or **MIDI Tools** category, listed under the manufacturer name **Layne Pitman**.
+* *Reminder: Place this plugin directly before your MPE-enabled synthesizer in the device chain.*
 
-Then check out the [documentation](https://melatonin.dev/manuals/pamplejuce/setting-your-project-up/) so you know what to tweak. 
+## Contributing & Feedback
 
-> [!NOTE]
-> Tests will immediately run and fail (go red) until you [set up code signing](https://melatonin.dev/manuals/pamplejuce/getting-started/code-signing/).
+OpenBend is an open-source project, and contributions are highly encouraged! Whether you're an experienced C++/JUCE developer, a music theory enthusiast, or just someone who found a bug, your help is welcome.
 
-## Having Issues?
+- **Found a bug or have a feature request?** Please open an issue on GitHub to let me know what you'd like to see in the future or what needs fixing.
+- **Want to contribute code?** Feel free to fork the repository, make your changes, and submit a Pull Request.
 
-Thanks to everyone who has contributed to the repository. 
+I'm always looking for ways to improve the plugin, add new tuning features, or optimize the MPE handling. Don't hesitate to reach out!
 
-This repository covers a _lot_ of ground. JUCE itself has a lot of surface area. It's a group effort to maintain the garden and keep things nice!
+## License
 
-If something isn't just working out of the box — *it's probably not just you* — others are running into the problem, too, I promise. Check out [the official docs](https://melatonin.dev/manuals/pamplejuce), then please do [open an issue](https://github.com/sudara/pamplejuce/issues/new)!
+This project is licensed under the terms of the GPLv3 License. See the `LICENSE.md` file for details.
