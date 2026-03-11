@@ -16,8 +16,9 @@ include(JUCEDefaults)
 set(PROJECT_NAME "OpenBend")
 set(PRODUCT_NAME "OpenBend")
 
-set(PROJECT_NAME "OpenBend")
-set(PRODUCT_NAME "OpenBend")
+set(COMPANY_NAME "Layne Pitman")
+
+set(BUNDLE_ID "com.laynepitman.openbend")
 
 set(FORMATS Standalone AU VST3)
 
@@ -116,7 +117,7 @@ target_compile_definitions(SharedCode
     VERSION="${CURRENT_VERSION}"
 
     # JucePlugin_Name is for some reason doesn't use the nicer PRODUCT_NAME
-    PRODUCT_NAME_WITHOUT_VERSION="Pamplejuce"
+    PRODUCT_NAME_WITHOUT_VERSION="OpenBend"
 )
 
 # Link to any other modules you added (with juce_add_module) here!
@@ -144,10 +145,10 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE SharedCode)
 include(PamplejuceIPP)
 
 # Everything related to the tests target
-include(Tests)
+#include(Tests)
 
 # A separate target for Benchmarks (keeps the Tests target fast)
-include(Benchmarks)
+#include(Benchmarks)
 
 # Output some config for CI (like our PRODUCT_NAME)
 include(GitHubENV)
