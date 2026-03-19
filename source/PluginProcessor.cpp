@@ -333,7 +333,12 @@ void OpenBendAudioProcessor::cacheEvent(juce::MidiMessage& message, juce::MidiBu
         int noteNumber = message.getNoteNumber();
         // if we have the true glide on we gotta get that note in the cache to wait for its turn >:(
         if (isGlideOn && isGlideTrue) {
-            const long long trueGlideDebounceMs = static_cast<long long>(*apvts.getRawParameterValue("TRUE_GLIDE_DEBOUNCE"));
+            const long long trueGlideParam = static_cast<long long>(*apvts.getRawParameterValue("TRUE_GLIDE_DEBOUNCE"));
+            const long long chordChangeParam = static_cast<long long>(*apvts.getRawParameterValue("CHORD_CHANGE_DEBOUNCE"));
+
+            // Since true glide will never work if it's less than chord change param, we gotta override it so that it can always work
+            const long long trueGlideDebounceMs = std::max(trueGlideParam, chordChangeParam);
+
             if (!noteDispatch[noteNumber].dispatched) {
                 NoteInfo dispatchNote;
                 dispatchNote = noteDispatch[noteNumber];
@@ -384,7 +389,7 @@ void OpenBendAudioProcessor::setupLegato(juce::MidiMessage& originMessage, juce:
     startPitchBends[targetNote] = currentPitchBends[originNote];
     currentPitchBends[targetNote] = startPitchBends[targetNote];
     // Since pitch bend is realative we need the bend to our note as well
-    targetPitchBends[targetNote] = (hijackingNote[targetNote] - hijackingNote[originNote]) + initialBend;
+    targetPitchBends[targetNote] = (targetNote - hijackingNote[targetNote]) + initialBend;
     slidePhase[targetNote] = 0.0;
     lastSentPitchValue[targetNote] = lastSentPitchValue[originNote];
     // We just hijack the whole channel and the logic is much easier
@@ -776,8 +781,6 @@ void OpenBendAudioProcessor::processDebounceNotesOn(juce::MidiBuffer& processedM
 
     if (noteOnMessages.empty()) return;
 
-    updateChordState();
-
     // Route to the chord versions of the legato and glide functions
     if (isLegatoOn && legatoSearchMode == 5) {
         findLegato(noteOnMessages, processedMidi, 0);
@@ -794,7 +797,7 @@ void OpenBendAudioProcessor::processDebounceNotesOn(juce::MidiBuffer& processedM
         }
     }
 
-    
+    updateChordState(); // Update chords here since doing it before was causing chords to be made with the non-paried legato and glide notes
 }
 
 void OpenBendAudioProcessor::processDebounceNotesOff(juce::MidiBuffer& processedMidi) {
@@ -1035,7 +1038,7 @@ void OpenBendAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
             // For true legato we also need our relative differtence
             double newTarget = calculateJIPitchBend(i, currentRootNote) + (i - hijackingNote[i]);
             // Tracking where we are in the pitch bend to keep pitch bends correct between blocks for each note
-            if (newTarget != targetPitchBends[i]) {
+            if (std::abs(newTarget - targetPitchBends[i]) > 0.001) {    // Tiny epsilon to stop like jitter from float and double rounding
                 targetPitchBends[i] = newTarget;
                 startPitchBends[i] = currentPitchBends[i];
                 slidePhase[i] = 0.0;

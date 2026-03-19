@@ -97,6 +97,28 @@ OpenBendAudioProcessorEditor::OpenBendAudioProcessorEditor(OpenBendAudioProcesso
     glideSearchComboBox.onChange = [this] { updateVisibility(); };
     legatoSearchComboBox.onChange = [this] { updateVisibility(); };
 
+    // Show the bottom out of trueglide being the chord change debounce to the user cuz that would suck to just secretly do it
+    chordChangeDebounceSlider.onValueChange = [this] {
+        double currentChordChange = chordChangeDebounceSlider.getValue();
+
+        // Restrict it so they can't pull it down after we set it
+        trueGlideDebounceSlider.setRange(currentChordChange, 500.0, 1.0);
+
+        // If they change the chord change then change the trueglide min to be the chord change (How many times can you say change challenge *IMPOSSIBLE*)
+        if (trueGlideDebounceSlider.getValue() < currentChordChange) {
+            trueGlideDebounceSlider.setValue(currentChordChange, juce::sendNotificationAsync);
+        }
+    };
+
+    trueGlideDebounceSlider.onValueChange = [this] {
+        double currentChordChange = chordChangeDebounceSlider.getValue();
+
+        // True glide no go lower
+        if (trueGlideDebounceSlider.getValue() < currentChordChange) {
+            trueGlideDebounceSlider.setValue(currentChordChange, juce::sendNotificationAsync);
+        }
+    };
+
     setSize(960, 560);
 
     // Set initial state
@@ -121,6 +143,11 @@ void OpenBendAudioProcessorEditor::updateVisibility()
 
     resized();
     repaint();
+
+    // Force the slider to bend to our will so that it doesn't go out of sync
+    if (chordChangeDebounceSlider.onValueChange != nullptr) {
+        chordChangeDebounceSlider.onValueChange();
+    }
 }
 
 //==============================================================================
