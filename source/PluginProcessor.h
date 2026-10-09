@@ -94,6 +94,8 @@ public:
     juce::AudioProcessorValueTreeState apvts;
     // Helper to create and return param layout
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+    // Helper to pick the audio buses for the format we were loaded as
+    static BusesProperties makeBusesProperties();
 
     struct NotePair {
         juce::MidiMessage target;
