@@ -121,6 +121,12 @@ jobs:
           curl -LO "https://github.com/Tracktion/pluginval/releases/download/v1.0.3/pluginval_${{ runner.os }}.zip"
           7z x pluginval_${{ runner.os }}.zip
           ${{ matrix.pluginval-binary }} --strictness-level 10 --verbose --validate "${{ env.VST3_PATH }}"
+        
+      - name: auval
+        if: runner.os == 'macOS'
+        run: |
+          killall -9 AudioComponentRegistrar || true
+          auval -v aumi OBND OB01
 
       #- name: Import Certificates (macOS)
       #  uses: sudara/basic-macos-keychain-action@v1
@@ -244,6 +250,9 @@ jobs:
     if: contains(github.ref, 'tags/v')
     runs-on: ubuntu-latest
     needs: build_and_test
+    # Needed to publish the release when the default token is read-only (e.g. on forks)
+    permissions:
+      contents: write
 
     steps:
       - name: Get Artifacts

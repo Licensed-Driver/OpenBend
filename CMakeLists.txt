@@ -68,6 +68,11 @@ juce_add_plugin("${PROJECT_NAME}"
     PLUGIN_CODE OBND
     FORMATS "${FORMATS}"
 
+    # OpenBend is a MIDI effect: this makes the AU an `aumi` (MIDI FX slot in Logic)
+    IS_MIDI_EFFECT TRUE
+    NEEDS_MIDI_INPUT TRUE
+    NEEDS_MIDI_OUTPUT TRUE
+
     # The name of your final executable
     # This is how it's listed in the DAW
     # This can be different from PROJECT_NAME and can have spaces!
@@ -80,7 +85,7 @@ add_library(SharedCode INTERFACE)
 
 clap_juce_extensions_plugin(TARGET "${PROJECT_NAME}"
     CLAP_ID "${BUNDLE_ID}"
-    CLAP_FEATURES audio-effect)
+    CLAP_FEATURES note-effect)
 
 # Enable fast math, C++20 and a few other target defaults
 include(SharedCodeDefaults)

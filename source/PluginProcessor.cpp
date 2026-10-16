@@ -12,16 +12,21 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 
 //==============================================================================
+juce::AudioProcessor::BusesProperties OpenBendAudioProcessor::makeBusesProperties()
+{
+    // AU MIDI effects (Logic's MIDI FX slot) have no audio buses. Other formats keep a
+    // stereo pass-through since many VST3/CLAP hosts won't load a plugin without audio IO
+    if (juce::PluginHostType::getPluginLoadedAs() == wrapperType_AudioUnit)
+        return BusesProperties();
+
+    return BusesProperties()
+        .withInput("Input", juce::AudioChannelSet::stereo(), true)
+        .withOutput("Output", juce::AudioChannelSet::stereo(), true);
+}
+
 OpenBendAudioProcessor::OpenBendAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
-    : AudioProcessor(BusesProperties()
-        #if ! JucePlugin_IsMidiEffect
-        #if ! JucePlugin_IsSynth
-                .withInput("Input", juce::AudioChannelSet::stereo(), true)
-        #endif
-                .withOutput("Output", juce::AudioChannelSet::stereo(), true)
-        #endif
-        ),
+    : AudioProcessor(makeBusesProperties()),
     apvts(*this, nullptr, "Parameters", createParameterLayout())
 #endif
 {
@@ -126,10 +131,10 @@ void OpenBendAudioProcessor::releaseResources()
 #ifndef JucePlugin_PreferredChannelConfigurations
 bool OpenBendAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
-  #if JucePlugin_IsMidiEffect
-    juce::ignoreUnused (layouts);
-    return true;
-  #else
+    // No audio at all is fine, we only care about MIDI
+    if (layouts.getMainInputChannelSet().isDisabled() && layouts.getMainOutputChannelSet().isDisabled())
+        return true;
+
     // This is the place where you check if the layout is supported.
     // In this template code we only support mono or stereo.
     // Some plugin hosts, such as certain GarageBand versions, will only
@@ -145,7 +150,6 @@ bool OpenBendAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts)
    #endif
 
     return true;
-  #endif
 }
 #endif
 
