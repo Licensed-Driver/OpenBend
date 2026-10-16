@@ -1,6 +1,6 @@
 # OpenBend
 
-OpenBend is an open-source MIDI effect that retunes the chords you play from 12-tone equal temperament (12-TET) to **Just Intonation**, live. It sits in front of an MPE synthesizer, works out the root of whatever chord is held, and sends each note its own pitch bend so the intervals land on pure ratios.
+OpenBend is an open-source, MPE-based MIDI effect that retunes the chords you play from 12-tone equal temperament (12-TET) to **Just Intonation**, live. It sits in front of an MPE synthesizer, works out the root of whatever chord is held, and sends each note its own pitch bend so the intervals land on pure ratios.
 
 Built with [JUCE](https://juce.com). Available as AU, VST3, CLAP and Standalone.
 
@@ -86,7 +86,7 @@ The retuning is small (up to about 18 cents), so the sound matters more than the
 - **Best chord for hearing beating disappear**: a major triad spread wide, such as C3–G3–E4.
 - **Sound**: a plain sustained patch (single saw, organ) with no chorus, detune, vibrato or heavy reverb.
 - **Register**: around C3–C5.
-- **Comparing**: play the chord with OpenBend on, release, bypass it, and play again. Bypassing while notes are held can leave them stuck.
+- **Comparing**: play the chord with OpenBend on, release, bypass it, and play again.
 
 ## Controls
 
@@ -125,7 +125,6 @@ At a ±48 semitone range one pitch bend step is about 0.6 cents, so the bends ac
 
 - **Non-MPE synths do not work.** This includes most classic polysynths and their clones, which apply pitch bend globally.
 - **Detuned and chorused patches hide the effect.** A unison detune of 10 cents or more is as wide as the correction itself.
-- **The last note released can shift.** If one note of a chord is held slightly longer than the rest, it becomes the root and is bent back to its 12-TET pitch while it fades. Turning Portamento on softens this.
 - **At most 14 notes** can be retuned independently (channels 2–15).
 
 ## Building from source
