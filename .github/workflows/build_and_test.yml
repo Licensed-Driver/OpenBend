@@ -121,6 +121,12 @@ jobs:
           curl -LO "https://github.com/Tracktion/pluginval/releases/download/v1.0.3/pluginval_${{ runner.os }}.zip"
           7z x pluginval_${{ runner.os }}.zip
           ${{ matrix.pluginval-binary }} --strictness-level 10 --verbose --validate "${{ env.VST3_PATH }}"
+        
+      - name: auval
+        if: runner.os == 'macOS'
+        run: |
+          killall -9 AudioComponentRegistrar || true
+          auval -v aumi OBND OB01
 
       #- name: Import Certificates (macOS)
       #  uses: sudara/basic-macos-keychain-action@v1
