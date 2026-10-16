@@ -10,43 +10,6 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
-// A circular queue to safely store note information
-template<typename T, size_t Size>
-class AudioQueue {
-public:
-    void push(const T& item) {
-        buffer[writeIndex] = item;
-        writeIndex = (writeIndex + 1) % Size;
-        if (count < Size) count++;
-    }
-
-    // Pop oldest item into the given ref
-    bool pop(T& item) {
-        if (count == 0) return false;
-
-        item == buffer[readIndex];
-        readIndex = (readIndex + 1) % Size;
-        count--;
-        return true;
-    }
-
-    // To get the item without popping it out
-    T& get() {
-        if (count == 0) return nullptr;
-        
-        T& item = buffer[readIndex];
-        return item;
-    }
-
-    int getCount() const { return count; }
-    void clear() { writeIndex = 0; readIndex = 0; count = 0; }
-private:
-    std::array<T, Size> buffer;
-    int writeIndex = 0;
-    int readIndex = 0;
-    int count = 0;
-};
-
 //==============================================================================
 /**
 */
@@ -103,16 +66,6 @@ public:
         int distance;
     };
 
-    struct NoteTime {
-        juce::MidiMessage message;
-        long long eventTime;
-    };
-
-    enum states {
-        ON,
-        OFF
-    };
-
     struct NoteInfo {
         juce::MidiMessage message;
         long long dispatchTime;
@@ -120,7 +73,6 @@ public:
     };
 
     std::array<NoteInfo, 128> noteDispatch;
-    std::array<states, 128> noteStates;
 
 private:
     //==============================================================================
@@ -181,18 +133,12 @@ private:
     std::array<double, 128> slidePhase;
 
     // Note gliding!
-    std::array<double, 128> targetGlideBends;
     std::array<long long, 128> glideTimers;
-
-    // For tracking time between sample blocks
-    double lastTime;
 
     // Hardcoded window for legato to wait before considering a note
     double legatoWaitMs;
     // For storing when a key was pressed for that legato timing
     std::array<double, 128> legatoTimers;
-    // For chord change logic
-    std::array<double, 128> noteEndTimes;
 
     // When we want to do true legato we need to make the new key tell the old key to not stop playing
     // Then when the old key gets a noteOff, we instead just ignore it until the G gets a noteOff
