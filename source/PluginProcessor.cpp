@@ -809,7 +809,6 @@ void OpenBendAudioProcessor::processDebounceNotesOff(juce::MidiBuffer& processed
         processNote(message, processedMidi, 0);
 
         ni.dispatched = true;
-        updateChordState();
     }
 }
 
@@ -865,7 +864,7 @@ void OpenBendAudioProcessor::cleanupNote(juce::MidiMessage& message, juce::MidiB
 
     // Update state management
     activeNotes[noteNumber] = false;
-    updateChordState();
+    // Don't update chord state so that we don't change roots when releasing
 
 
     if (hijackedBy[noteNumber] == noteNumber) {
