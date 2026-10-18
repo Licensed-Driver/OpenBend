@@ -5,10 +5,7 @@
 
 int main (int argc, char* argv[])
 {
-    // This lets us use JUCE's MessageManager without leaking.
-    // PluginProcessor might need this if you use the APVTS for example.
-    // You'll also need it for tests that rely on juce::Graphics, juce::Timer, etc.
-    // It's nicer DX when placed here vs. manually in Catch2 SECTIONs
+    // Just lets us test GUI and Graphic shit without leaking memory
     juce::ScopedJuceInitialiser_GUI gui;
 
     const int result = Catch::Session().run (argc, argv);
