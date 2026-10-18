@@ -1108,22 +1108,24 @@ juce::AudioProcessorEditor* OpenBendAudioProcessor::createEditor()
 //==============================================================================
 void OpenBendAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
-    juce::ignoreUnused (destData);
+    // save params as XML
+    auto state = apvts.copyState();
+    std::unique_ptr<juce::XmlElement> xml (state.createXml());
+    copyXmlToBinary (*xml, destData);
+}
+
+void OpenBendAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+{
+    std::unique_ptr<juce::XmlElement> xml (getXmlFromBinary (data, sizeInBytes));
+
+    // Load params back
+    if (xml != nullptr && xml->hasTagName (apvts.state.getType()))
+        apvts.replaceState (juce::ValueTree::fromXml (*xml));
 }
 
 juce::AudioProcessorParameter* OpenBendAudioProcessor::getBypassParameter() const
 {
     return apvts.getParameter("BYPASS_ON");
-}
-
-void OpenBendAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
-{
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
-    juce::ignoreUnused (data, sizeInBytes);
 }
 
 //==============================================================================
