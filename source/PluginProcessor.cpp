@@ -8,7 +8,9 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include <cstddef>
 #include <juce_audio_basics/juce_audio_basics.h>
+#include <memory>
 
 //==============================================================================
 juce::AudioProcessor::BusesProperties OpenBendAudioProcessor::makeBusesProperties()
@@ -283,6 +285,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout OpenBendAudioProcessor::crea
         "TRUE_GLIDE_ON",
         "True Glide Active",
         false));
+
+    // Add the bypass param to the layout so it actually exists at runtime
+    layout.add(std::make_unique<juce::AudioParameterBool>(
+        "BYPASS_ON",
+        "Bypass",
+        false
+    ));
 
     return layout;
 }
@@ -876,9 +885,14 @@ void OpenBendAudioProcessor::cleanupNote(juce::MidiMessage& message, juce::MidiB
         // Lookup the channel of this note
         int channelToTurnOff = noteToChannel[noteNumber];
 
-        // Send the note off message
-        auto mpeNoteOff = juce::MidiMessage::noteOff(channelToTurnOff, hijackingNote[noteNumber]);
-        processedMidi.addEvent(mpeNoteOff, samplePosition);
+        // We didn't start the note (like started while bypassed) so just send it through
+        if (channelToTurnOff == 0) {
+            processedMidi.addEvent(message, samplePosition);
+        } else {
+            // Send the note off message
+            auto mpeNoteOff = juce::MidiMessage::noteOff(channelToTurnOff, hijackingNote[noteNumber]);
+            processedMidi.addEvent(mpeNoteOff, samplePosition);
+        }
 
         // Clear the channel and pitch mapping
         noteToChannel[noteNumber] = 0;
@@ -920,6 +934,21 @@ void OpenBendAudioProcessor::processNote(juce::MidiMessage& message, juce::MidiB
     }
 }
 
+void OpenBendAudioProcessor::killAll(juce::MidiBuffer& processedMidi)
+{
+    for (int i = 0; i < 128; i++)
+    {
+        // Cleanup note already kills the notes that are on, so only call it for those
+        if (activeNotes[i]) {
+            auto bogus = juce::MidiMessage::noteOff(1, i);
+            cleanupNote(bogus, processedMidi, 0);
+        }
+
+        // Dump cache so we don't try starting debounces (dispatched is the flag so no need to clear values)
+        noteDispatch[i].dispatched = true;
+    }
+}
+
 void OpenBendAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
@@ -927,14 +956,26 @@ void OpenBendAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     auto totalNumInputChannels = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
+    // Clear all output channels in case they have garbage values since they aren't guaranteed to be empty
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear(i, 0, buffer.getNumSamples());
+
+    juce::MidiBuffer processedMidi;
+
+    if (*apvts.getRawParameterValue("BYPASS_ON") > 0.5f)
+    {
+        // Kill everything once when bypass starts, then pass MIDI through
+        if (!bypassing) {
+            bypassing = true;
+            killAll(processedMidi);
+            processedMidi.addEvents(midiMessages, 0, -1, 0);
+            midiMessages.swapWith(processedMidi);
+        }
+        return;
+    } else 
+    {
+        bypassing = false;
+    }
 
     bool isPortamentoOn = *apvts.getRawParameterValue("PORTAMENTO_ON") > 0.5f;
     float portSpeedMs = *apvts.getRawParameterValue("PORT_SPEED");
@@ -961,8 +1002,6 @@ void OpenBendAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         // Amount to add per block to reach 1.0 in portTimeSeconds or glideTimeSeconds
         phaseIncrement = buffer.getNumSamples() / (sampleRate * (isLegatoOn ? legatoTimeSeconds : isGlideOn ? glideTimeSeconds : portTimeSeconds));
     }
-
-    juce::MidiBuffer processedMidi;
 
     handleDebounce(processedMidi);
 
@@ -1073,6 +1112,11 @@ void OpenBendAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
     juce::ignoreUnused (destData);
+}
+
+juce::AudioProcessorParameter* OpenBendAudioProcessor::getBypassParameter() const
+{
+    return apvts.getParameter("BYPASS_ON");
 }
 
 void OpenBendAudioProcessor::setStateInformation (const void* data, int sizeInBytes)

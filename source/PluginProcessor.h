@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "juce_audio_basics/juce_audio_basics.h"
 #include <juce_audio_processors/juce_audio_processors.h>
 
 //==============================================================================
@@ -52,6 +53,9 @@ public:
     //==============================================================================
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
+
+    // Let the DAW get the param so it can signal bypassing
+    juce::AudioProcessorParameter* getBypassParameter() const override;
 
     // Saved params
     juce::AudioProcessorValueTreeState apvts;
@@ -124,6 +128,8 @@ private:
 
     void processNote(juce::MidiMessage& message, juce::MidiBuffer& processedMidi, int samplePosition);
 
+    void killAll(juce::MidiBuffer& processedMidi);
+
     std::vector<OpenBendAudioProcessor::NotePair> findChord(std::vector<juce::MidiMessage>& targetNotes, std::vector<juce::MidiMessage>& originNotes);
 
     // Starting on portamento boyyyy
@@ -146,6 +152,9 @@ private:
     std::array<int, 128> hijackedBy;
 
     long long chordChangeDebounceDeadline;
+
+    // Bypass Handling
+    bool bypassing = false;
 
     // Stores the last portamento we sent so that we aren't spamming messages
     std::array<int, 128> lastSentPitchValue;
