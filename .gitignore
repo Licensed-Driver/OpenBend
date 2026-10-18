@@ -31,3 +31,5 @@ packaging/Output/*
 # Local CMake build dir
 build/
 compile_commands.json
+build-*/
+.cache/
