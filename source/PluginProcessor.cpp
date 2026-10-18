@@ -8,7 +8,6 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-#include <ranges>
 #include <juce_audio_basics/juce_audio_basics.h>
 
 //==============================================================================
@@ -35,7 +34,6 @@ OpenBendAudioProcessor::OpenBendAudioProcessor()
     currentPitchBends.fill(0.0);
     targetPitchBends.fill(0.0);
     startPitchBends.fill(0.0);
-    targetGlideBends.fill(0.0);
     legatoTimers.fill(0.0);
     glideTimers.fill(0.0);
 
@@ -104,15 +102,18 @@ int OpenBendAudioProcessor::getCurrentProgram()
 
 void OpenBendAudioProcessor::setCurrentProgram (int index)
 {
+    juce::ignoreUnused (index);
 }
 
 const juce::String OpenBendAudioProcessor::getProgramName (int index)
 {
+    juce::ignoreUnused (index);
     return {};
 }
 
 void OpenBendAudioProcessor::changeProgramName (int index, const juce::String& newName)
 {
+    juce::ignoreUnused (index, newName);
 }
 
 //==============================================================================
@@ -120,6 +121,7 @@ void OpenBendAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
+    juce::ignoreUnused (sampleRate, samplesPerBlock);
 }
 
 void OpenBendAudioProcessor::releaseResources()
@@ -365,11 +367,6 @@ void OpenBendAudioProcessor::cacheEvent(juce::MidiMessage& message, juce::MidiBu
             noteDispatch[noteNumber] = {
                 message,
                 juce::Time::currentTimeMillis(),
-                false
-            };
-            noteDispatch[noteNumber] = {
-                message,
-                juce::Time::currentTimeMillis(),
                 true // Processed immediately so mark da bih dispatched
             };
             // Again if it ain't caching we just push that bad boy through
@@ -419,15 +416,11 @@ void OpenBendAudioProcessor::handleDebounce(juce::MidiBuffer& processedMidi) {
 
 void OpenBendAudioProcessor::findGlide(std::vector<juce::MidiMessage>& messages, juce::MidiBuffer& processedMidi, int samplePosition) {
     bool isGlideTrue = *apvts.getRawParameterValue("TRUE_GLIDE_ON") > 0.5f;
-    float glideRange = *apvts.getRawParameterValue("GLIDE_RANGE");
-    int glideSearchMode = static_cast<int>(*apvts.getRawParameterValue("GLIDE_SEARCH_MODE"));
 
     std::vector<juce::MidiMessage> noteOffMessages;
 
     // Vectorize the messages for findChord
-    for (const auto& ni : noteDispatch) { 
-        bool dispatched = ni.dispatched;
-        bool noteoff = ni.message.isNoteOff();
+    for (const auto& ni : noteDispatch) {
         if (!ni.dispatched && ni.message.isNoteOff()) noteOffMessages.push_back(ni.message);
     }
 
@@ -551,8 +544,6 @@ void OpenBendAudioProcessor::findGlide(juce::MidiMessage message, juce::MidiBuff
 
 void OpenBendAudioProcessor::findLegato(std::vector<juce::MidiMessage>& messages, juce::MidiBuffer& processedMidi, int samplePosition) {
     bool isLegatoTrue = *apvts.getRawParameterValue("TRUE_LEGATO_ON") > 0.5f;
-    float legatoRange = *apvts.getRawParameterValue("LEGATO_RANGE");
-    int legatoSearchMode = static_cast<int>(*apvts.getRawParameterValue("LEGATO_SEARCH_MODE"));
 
     std::vector<juce::MidiMessage> originNotes;
     // Create our pool of possible notes
@@ -806,10 +797,6 @@ void OpenBendAudioProcessor::processDebounceNotesOn(juce::MidiBuffer& processedM
 
 void OpenBendAudioProcessor::processDebounceNotesOff(juce::MidiBuffer& processedMidi) {
 
-    const auto glideTimeRange = static_cast<juce::int64>(
-        std::llround(*apvts.getRawParameterValue("GLIDE_TIME_RANGE")));
-    const auto nowMs = juce::Time::currentTimeMillis();
-
     for (auto& ni : noteDispatch) {
         auto& message = ni.message;
         // Bruh obvi we gonna skip if there ain't anything to dispatch or if it ain't a note on message or if it's time has not yet come
@@ -870,7 +857,6 @@ void OpenBendAudioProcessor::cleanupNote(juce::MidiMessage& message, juce::MidiB
 
     int noteNumber = message.getNoteNumber();
 
-    targetGlideBends[noteNumber] = 0.0;
     targetPitchBends[noteNumber] = 0.0;
     startPitchBends[noteNumber] = 0.0;
     currentPitchBends[noteNumber] = 0.0;
@@ -904,39 +890,8 @@ void OpenBendAudioProcessor::cleanupNote(juce::MidiMessage& message, juce::MidiB
 }
 
 void OpenBendAudioProcessor::processNote(juce::MidiMessage& message, juce::MidiBuffer& processedMidi, int samplePosition) {
-    bool isPortamentoOn = *apvts.getRawParameterValue("PORTAMENTO_ON") > 0.5f;
-    float portSpeedMs = *apvts.getRawParameterValue("PORT_SPEED");
-    int portCurveType = static_cast<int>(*apvts.getRawParameterValue("PORT_CURVE_TYPE"));
-
     bool isGlideOn = *apvts.getRawParameterValue("GLIDE_ON") > 0.5f;
-    float glideSpeedMs = *apvts.getRawParameterValue("GLIDE_SPEED");
-    int glideCurveType = static_cast<int>(*apvts.getRawParameterValue("GLIDE_CURVE_TYPE"));
-    float glideRange = *apvts.getRawParameterValue("GLIDE_RANGE");
-    const auto glideTimeRange = static_cast<juce::int64>(
-        std::llround(*apvts.getRawParameterValue("GLIDE_TIME_RANGE")));
-
     bool isLegatoOn = *apvts.getRawParameterValue("LEGATO_ON") > 0.5f;
-    bool isLegatoTrue = *apvts.getRawParameterValue("TRUE_LEGATO_ON") > 0.5f;
-    float legatoRange = *apvts.getRawParameterValue("LEGATO_RANGE");
-    float legatoSpeedMs = *apvts.getRawParameterValue("LEGATO_SPEED");
-    int legatoCurveType = static_cast<int>(*apvts.getRawParameterValue("LEGATO_CURVE_TYPE"));
-
-    // How long will we hold off on glide or legato while waiting for finished chord change
-    double trueGlideDebounce = *apvts.getRawParameterValue("TRUE_GLIDE_DEBOUNCE");
-
-    double chordChangeDebounce = *apvts.getRawParameterValue("CHORD_CHANGE_DEBOUNCE");
-
-    int glideSearchMode = static_cast<int>(*apvts.getRawParameterValue("GLIDE_SEARCH_MODE"));
-    int legatoSearchMode = static_cast<int>(*apvts.getRawParameterValue("LEGATO_SEARCH_MODE"));
-
-    // For calculating the smoothing of the portamento
-    double portTimeSeconds = portSpeedMs / 1000.0;
-    double glideTimeSeconds = glideSpeedMs / 1000.0;
-    double legatoTimeSeconds = legatoSpeedMs / 1000.0;
-    double phaseIncrement = 1.0;
-
-    // Updating all the possible glide notes to the time that's passed, since we don't wanna cut it short we update before we set new ones so that the samples can play out.
-    double currentTime = juce::Time::currentTimeMillis();
 
     if (message.isNoteOn()) {
 
@@ -989,23 +944,10 @@ void OpenBendAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
     bool isGlideOn = *apvts.getRawParameterValue("GLIDE_ON") > 0.5f;
     float glideSpeedMs = *apvts.getRawParameterValue("GLIDE_SPEED");
     int glideCurveType = static_cast<int>(*apvts.getRawParameterValue("GLIDE_CURVE_TYPE"));
-    float glideRange = *apvts.getRawParameterValue("GLIDE_RANGE");
-    const auto glideTimeRange = static_cast<juce::int64>(
-        std::llround(*apvts.getRawParameterValue("GLIDE_TIME_RANGE")));
 
     bool isLegatoOn = *apvts.getRawParameterValue("LEGATO_ON") > 0.5f;
-    bool isLegatoTrue = *apvts.getRawParameterValue("TRUE_LEGATO_ON") > 0.5f;
-    float legatoRange = *apvts.getRawParameterValue("LEGATO_RANGE");
     float legatoSpeedMs = *apvts.getRawParameterValue("LEGATO_SPEED");
     int legatoCurveType = static_cast<int>(*apvts.getRawParameterValue("LEGATO_CURVE_TYPE"));
-
-    // How long will we hold off on glide or legato while waiting for finished chord change
-    double trueGlideDebounce = *apvts.getRawParameterValue("TRUE_GLIDE_DEBOUNCE");
-
-    double chordChangeDebounce = *apvts.getRawParameterValue("CHORD_CHANGE_DEBOUNCE");
-
-    int glideSearchMode = static_cast<int>(*apvts.getRawParameterValue("GLIDE_SEARCH_MODE"));
-    int legatoSearchMode = static_cast<int>(*apvts.getRawParameterValue("LEGATO_SEARCH_MODE"));
 
     // For calculating the smoothing of the portamento
     double sampleRate = getSampleRate();
@@ -1020,9 +962,6 @@ void OpenBendAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
         // Amount to add per block to reach 1.0 in portTimeSeconds or glideTimeSeconds
         phaseIncrement = buffer.getNumSamples() / (sampleRate * (isLegatoOn ? legatoTimeSeconds : isGlideOn ? glideTimeSeconds : portTimeSeconds));
     }
-
-    // Updating all the possible glide notes to the time that's passed, since we don't wanna cut it short we update before we set new ones so that the samples can play out.
-    double currentTime = juce::Time::currentTimeMillis();
 
     juce::MidiBuffer processedMidi;
 
@@ -1134,12 +1073,14 @@ void OpenBendAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
     // You should use this method to store your parameters in the memory block.
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
+    juce::ignoreUnused (destData);
 }
 
 void OpenBendAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+    juce::ignoreUnused (data, sizeInBytes);
 }
 
 //==============================================================================
